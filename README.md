@@ -1,26 +1,9 @@
 <img width="1119" height="939" alt="Untitled-2026-09-03-1513" src="https://github.com/user-attachments/assets/f9f5be28-505a-4085-8f64-ccb52a122ba0" />
 Relationship for the first version:-
-                     ┌───────────┐
-                     │   Item    │
-                     └─────┬─────┘
-                           │
-                           │ 1:N
-                           ▼
-                     ┌───────────┐
-                     │  Auction  │
-                     └─────┬─────┘
-                           │
-                           │ 1:N
-                           ▼
-                     ┌───────────┐
-                     │    Bid    │
-                     └─────┬─────┘
-                           ▲
-                           │ N:1
-                           │
-                     ┌─────┴─────┐
-                     │   User    │
-                     └───────────┘
+              erDiagram
+    Item ||--o{ Auction : "1:N"
+    Auction ||--o{ Bid : "1:N"
+    User ||--o{ Bid : "N:1"
 # BidForge
 
 BidForge is a project for creating, managing, and comparing bids.
