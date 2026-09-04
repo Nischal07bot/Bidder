@@ -60,6 +60,39 @@ The `Bid` table is designed as an **immutable, append-only ledger**. We strictly
 *   **Fault Tolerance & Rollbacks:** If the highest bid is invalidated, the system can instantly query the ledger to gracefully fall back to the next valid bid.
 *   **Auditability:** Every state change is cryptographically backed by a sequence of events, eliminating user disputes over "who bid first" and protecting the platform's integrity.
 *   **State Reconstruction:** The `Auction.current_price` acts merely as a projection (cache) of the `Bid` table. If the `Auction` state is ever corrupted, it can be perfectly reconstructed by replaying the immutable bid events.
+SCHEMA for version 1 (decided for now will be adding the pk,fk,indexing etc and desing choices as well as in why and what) 
+USER
+ ├── id
+ ├── email
+ ├── password_hash
+ ├── name
+ └── timestamps
+
+ITEM
+ ├── id
+ ├── seller_id → USER
+ ├── name
+ ├── description
+ ├── condition
+ └── timestamps
+
+AUCTION
+ ├── id
+ ├── item_id → ITEM
+ ├── starting_price
+ ├── current_price
+ ├── minimum_increment
+ ├── starts_at
+ ├── ends_at
+ ├── status
+ └── timestamps
+
+BID
+ ├── id
+ ├── auction_id → AUCTION
+ ├── bidder_id → USER
+ ├── amount
+ └── created_at
 # BidForge
 
 BidForge is a project for creating, managing, and comparing bids.
