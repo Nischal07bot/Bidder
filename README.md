@@ -60,7 +60,33 @@ The `Bid` table is designed as an **immutable, append-only ledger**. We strictly
 *   **Fault Tolerance & Rollbacks:** If the highest bid is invalidated, the system can instantly query the ledger to gracefully fall back to the next valid bid.
 *   **Auditability:** Every state change is cryptographically backed by a sequence of events, eliminating user disputes over "who bid first" and protecting the platform's integrity.
 *   **State Reconstruction:** The `Auction.current_price` acts merely as a projection (cache) of the `Bid` table. If the `Auction` state is ever corrupted, it can be perfectly reconstructed by replaying the immutable bid events.
-SCHEMA for version 1 (decided for now will be adding the pk,fk,indexing etc and desing choices as well as in why and what) 
+SCHEMA for version 1 (decided for now will be adding the pk,fk,indexing etc and desing choices as well as in why and what)
+### 4. Pragmatic Indexing Driven by Access Patterns
+**Context:**  
+Adding indexes indiscriminately to foreign keys or individual columns increases write overhead, inflates index maintenance costs during updates, and wastes memory. A database index should never be created purely based on schema definition; it must serve a verified, high-frequency query access pattern.
+
+**Decision:**  
+We strictly design indexes based on actual application access patterns rather than speculative schema coverage:
+
+1.  **Leverage Native Primary Key Indexes:**  
+    Primary keys (`users.id`, `auctions.id`, `bids.id`) automatically generate unique B-tree indexes in PostgreSQL. We strictly avoid redundant index creation on primary key lookup queries (e.g., `WHERE id = ?`).
+
+2.  **Optimize High-Traffic Bidding Lookups:**  
+    The primary bid display query requires fetching recent bids for an auction ordered by sequence:
+    ```sql
+    SELECT * FROM bids 
+    WHERE auction_id = ? 
+    ORDER BY created_at DESC 
+    LIMIT 50;
+    ```
+    To support this without in-memory sorting (`filesort`), we establish a **composite index** on `(auction_id, created_at DESC)`. This enables a fast range scan that directly returns pre-sorted records.
+
+3.  **Filtered / Active State Indexes:**  
+    Querying active auctions (`WHERE status = 'ACTIVE' AND ends_at <= ?`) uses composite or partial indexes targeting only non-terminated auctions, preventing full-table scans during peak catalog browsing.
+
+**Consequences:**  
+*   **Optimal Write Throughput:** By avoiding useless indexes on append-heavy tables like `Bid`, write latency and lock durations remain minimal.
+*   **Zero Redundancy:** Avoids common anti-patterns like creating duplicate indexes on standard primary key fields.
 USER
  ├── id
  ├── email
