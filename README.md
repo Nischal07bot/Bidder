@@ -87,6 +87,30 @@ We strictly design indexes based on actual application access patterns rather th
 **Consequences:**  
 *   **Optimal Write Throughput:** By avoiding useless indexes on append-heavy tables like `Bid`, write latency and lock durations remain minimal.
 *   **Zero Redundancy:** Avoids common anti-patterns like creating duplicate indexes on standard primary key fields.
+*   # 🗄️ Database Design & Indexing Strategy
+
+Our database architecture is driven by **access patterns**, not just logical data structures. We do not preemptively index columns based on "business importance"; we index based on proven, measured query requirements.
+
+## 1. The Query Contract
+
+Before writing migrations, we define the exact query contracts for our core tables. Indexes are built specifically to support these access paths.
+
+| Entity | Primary Query / Access Pattern | Target Index Strategy |
+| :--- | :--- | :--- |
+| **USER** | Lookup by ID; Authentication by Email | `PK(id)`, `UNIQUE(email)` |
+| **ITEM** | Fetch item details; Fetch by seller | `PK(id)`, `INDEX(seller_id)` |
+| **AUCTION** | Load auction page; List by item | `PK(id)`, `INDEX(item_id)` |
+| **BID** | Fetch recent bids for an auction | `INDEX(auction_id, created_at DESC)` |
+| **BID** | Fetch bid history for a user | `INDEX(bidder_id, created_at DESC)` |
+
+## 2. Core Indexing Principles
+
+### Composite Indexes & The Leftmost-Prefix Rule
+When filtering and sorting, the order of columns in an index is critical. For fetching bids, a simple index on `auction_id` forces the database to fetch the rows and then perform an expensive in-memory sort for the latest bids.
+
+Instead, we use a composite index:
+```sql
+CREATE INDEX idx_bids_auction_created ON bids(auction_id, created_at DESC);
 USER
  ├── id
  ├── email
