@@ -109,6 +109,15 @@ Before writing migrations, we define the exact query contracts for our core tabl
 When filtering and sorting, the order of columns in an index is critical. For fetching bids, a simple index on `auction_id` forces the database to fetch the rows and then perform an expensive in-memory sort for the latest bids.
 
 Instead, we use a composite index:
+
+## THE BIDDING RULES
+1. Auction must be ACTIVE to accept a bid.
+2. Bid must belong to a valid user.
+3. Seller cannot bid on their own auction.
+4. Bid amount must satisfy minimum increment.
+5. Accepted bids cannot be modified.
+6. Once CLOSED, no new bids are accepted.
+7. Highest accepted bid wins.
 ```sql
 CREATE INDEX idx_bids_auction_created ON bids(auction_id, created_at DESC);
 USER
