@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: bidforge-postgres
+    environment:
+      POSTGRES_DB: bidforge
+      POSTGRES_USER: bidforge
+      POSTGRES_PASSWORD: bidforge
+    ports:
+      - "5432:5432"
+    volumes:
+      - bidforge-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  bidforge-postgres-data:
