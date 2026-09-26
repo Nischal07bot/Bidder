@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "NodeNext",//so we need to write .js extension in import statements
     "lib": ["ES2022"],
     "strict": true,
     "esModuleInterop": true,

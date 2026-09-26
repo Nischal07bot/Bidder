@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: bidforge
       POSTGRES_PASSWORD: bidforge
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - bidforge-postgres-data:/var/lib/postgresql/data
 
