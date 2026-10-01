@@ -61,7 +61,19 @@ The `Bid` table is designed as an **immutable, append-only ledger**. We strictly
 *   **Auditability:** Every state change is cryptographically backed by a sequence of events, eliminating user disputes over "who bid first" and protecting the platform's integrity.
 *   **State Reconstruction:** The `Auction.current_price` acts merely as a projection (cache) of the `Bid` table. If the `Auction` state is ever corrupted, it can be perfectly reconstructed by replaying the immutable bid events.
 SCHEMA for version 1 (decided for now will be adding the pk,fk,indexing etc and desing choices as well as in why and what)
-### 4. Pragmatic Indexing Driven by Access Patterns
+### 4. The Many-to-Many Relationship (User ↔ Auction)
+
+It might seem like a straightforward 1-to-many setup at first glance, but **Bid** actually acts as the associative entity that resolves a complex many-to-many (`N:M`) relationship between Users and Auctions.
+
+Look at the two entities separately. A single `Bid` has exactly one user and one auction:
+
+```text
+Bid #101
+├── user_id = U1
+├── auction_id = A7
+└── amount = ₹101,000
+```
+### 5. Pragmatic Indexing Driven by Access Patterns
 **Context:**  
 Adding indexes indiscriminately to foreign keys or individual columns increases write overhead, inflates index maintenance costs during updates, and wastes memory. A database index should never be created purely based on schema definition; it must serve a verified, high-frequency query access pattern.
 
