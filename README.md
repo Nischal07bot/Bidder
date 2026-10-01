@@ -73,7 +73,19 @@ Bid #101
 ├── auction_id = A7
 └── amount = ₹101,000
 ```
-### 5. Pragmatic Indexing Driven by Access Patterns
+### 5. State Management: TEXT + CHECK vs. Native ENUMs
+**Context:** 
+An auction transitions through strict lifecycle states (`SCHEDULED`, `ACTIVE`, `CLOSED`, `CANCELLED`). Enforcing this at the database level is critical for data integrity.
+
+**Decision:** 
+We use a standard `TEXT` column combined with a `CHECK` constraint instead of a PostgreSQL native `ENUM` type.
+
+**Consequences & Trade-offs:**
+* **Zero-Downtime State Migrations:** If business logic changes and a state must be renamed or removed, native `ENUM` types require altering the underlying data type. This often forces PostgreSQL to rewrite the entire table on disk, holding an `ACCESS EXCLUSIVE` lock that completely blocks the application. With a `CHECK` constraint, we can execute a zero-downtime migration: we add the new rule using the `NOT VALID` clause (taking milliseconds), validate the constraint in the background without blocking concurrent reads/writes, and then instantly drop the old constraint.
+* **Single Source of Truth:** The application code (TypeScript/ORMs) already defines these states. Using `TEXT` allows the codebase to remain the strict source of truth, while the database acts as a lightweight safety net without requiring complex type synchronization.
+* **Database Portability:** Standard `TEXT` and `CHECK` constraints are ANSI SQL and work perfectly in lightweight, in-memory databases like SQLite for local integration testing. Native PostgreSQL `ENUM`s are proprietary and frequently break these testing workflows.
+
+### 6. Pragmatic Indexing Driven by Access Patterns
 **Context:**  
 Adding indexes indiscriminately to foreign keys or individual columns increases write overhead, inflates index maintenance costs during updates, and wastes memory. A database index should never be created purely based on schema definition; it must serve a verified, high-frequency query access pattern.
 
