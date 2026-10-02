@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model auctions {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  item_id           String   @db.Uuid
+  starting_price    BigInt
+  current_price     BigInt
+  minimum_increment BigInt
+  starts_at         DateTime @db.Timestamptz(6)
+  ends_at           DateTime @db.Timestamptz(6)
+  status            String
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+  items             items    @relation(fields: [item_id], references: [id], onUpdate: NoAction)
+  bids              bids[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model bids {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auction_id      String   @db.Uuid
+  bidder_id       String   @db.Uuid
+  amount          BigInt
+  idempotency_key String
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  auctions        auctions @relation(fields: [auction_id], references: [id], onUpdate: NoAction)
+  users           users    @relation(fields: [bidder_id], references: [id], onUpdate: NoAction)
+
+  @@unique([bidder_id, auction_id, idempotency_key], map: "bids_bidder_id_idempotency_key_unique")
+}
+
+model items {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String     @db.VarChar(255)
+  description String?
+  seller_id   String     @db.Uuid
+  condition   String     @db.VarChar(100)
+  created_at  DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime   @default(now()) @db.Timestamptz(6)
+  auctions    auctions[]
+  users       users      @relation(fields: [seller_id], references: [id], onUpdate: NoAction)
+}
+
+model users {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  username   String   @db.VarChar(255)
+  email      String   @unique
+  password   String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  bids       bids[]
+  items      items[]
+}
