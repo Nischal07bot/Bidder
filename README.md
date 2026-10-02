@@ -23,6 +23,17 @@ Relationship for the first version:-
 ┌─────┴─────┘
 │   User    │
 └───────────┘─┘
+USER
+ │
+ ├───────────────┐
+ │               │
+ │ 1:N           │ 1:N
+ ▼               ▼
+ITEM           BID
+ │               ▲
+ │ 1:N           │ N:1
+ ▼               │
+AUCTION ─────────┘
 ```
 ## System Architecture & Design Decisions
 
