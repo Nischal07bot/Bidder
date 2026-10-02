@@ -96,7 +96,22 @@ We use a standard `TEXT` column combined with a `CHECK` constraint instead of a 
 * **Single Source of Truth:** The application code (TypeScript/ORMs) already defines these states. Using `TEXT` allows the codebase to remain the strict source of truth, while the database acts as a lightweight safety net without requiring complex type synchronization.
 * **Database Portability:** Standard `TEXT` and `CHECK` constraints are ANSI SQL and work perfectly in lightweight, in-memory databases like SQLite for local integration testing. Native PostgreSQL `ENUM`s are proprietary and frequently break these testing workflows.
 
-### 6. Pragmatic Indexing Driven by Access Patterns
+## 6. Handling Currency (The `BIGINT` Convention)
+
+In this project, we **never use floats or decimals** to store financial data. All monetary values in the database are stored as **`BIGINT` representing the smallest unit of currency** (e.g., cents for USD/EUR). 
+
+**Why?**
+* **Zero Rounding Errors:** Integer math prevents catastrophic floating-point approximations.
+* **Performance:** Integer calculations are faster and take up less memory on the database.
+* **FinTech Standard:** We follow the exact same data modeling pattern used by Stripe and other major financial APIs.
+
+### Developer Rules for Currency
+
+1. **Database:** Store `$10.50` as `1050`.
+2. **API Layer:** Always send and receive amounts in cents. Never convert to decimals in the backend business logic.
+3. **Frontend UI:** Divide by `100` and format according to the user's locale *only* at the presentation layer (right before rendering the UI).
+4. **Zero-Decimal Currencies:** Always check the accompanying `currency_code` (e.g., `USD`, `EUR`, `JPY`) alongside the `amount`. Zero-decimal currencies like Japanese Yen (`JPY`) do not divide by 100 (e.g., `¥1000` is stored as `1000`).
+### 7. Pragmatic Indexing Driven by Access Patterns
 **Context:**  
 Adding indexes indiscriminately to foreign keys or individual columns increases write overhead, inflates index maintenance costs during updates, and wastes memory. A database index should never be created purely based on schema definition; it must serve a verified, high-frequency query access pattern.
 
