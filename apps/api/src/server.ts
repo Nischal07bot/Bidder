@@ -1,17 +1,17 @@
 import fastify from "fastify";
 import { config } from "dotenv";
-import { pool } from "../db/pool.js";
+import { prisma } from "../db/prisma.js";
 config();
 const fastifyIns=fastify({ logger: true });
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 fastifyIns.get("/health", async (request, reply) => {
   try{
-     const result = await pool.query("SELECT 1");
+     const result = await prisma.$queryRaw<unknown[]>`SELECT 1`;
 
     return reply.status(200).send({
       status: "ok",
-      database: result.rows[0] ? "connected" : "unknown",
+      database: result[0] ? "connected" : "unknown",
     });
   }catch(err)
   {
