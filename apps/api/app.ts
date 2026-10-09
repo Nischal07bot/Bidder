@@ -1,6 +1,8 @@
 import { prisma } from "./db/prisma.js";
 import fastify from "fastify";
+import { userRoutes } from "./src/routes/users.js";
 export const app=fastify({ logger: true });
+app.register(userRoutes,{prefix:"/users"});//yahan p jp bhi apis hmlog userRoutes me define krenge wo /users ke prefix k sath hi call honge
 app.get("/health",async (request,reply)=>{
     try{
     const result = await prisma.$queryRaw<unknown[]>`SELECT 1`;
