@@ -111,7 +111,51 @@ In this project, we **never use floats or decimals** to store financial data. Al
 2. **API Layer:** Always send and receive amounts in cents. Never convert to decimals in the backend business logic.
 3. **Frontend UI:** Divide by `100` and format according to the user's locale *only* at the presentation layer (right before rendering the UI).
 4. **Zero-Decimal Currencies:** Always check the accompanying `currency_code` (e.g., `USD`, `EUR`, `JPY`) alongside the `amount`. Zero-decimal currencies like Japanese Yen (`JPY`) do not divide by 100 (e.g., `¥1000` is stored as `1000`).
-### 7. Pragmatic Indexing Driven by Access Patterns
+### 7. Hybrid Token Authentication Strategy
+
+**Date:** 2026-10-10  
+**Status:** Accepted  
+**Project:** BidForge  
+
+## 1. Context and Problem Statement
+BidForge requires a secure, scalable identity and authentication system to protect user accounts and authorize marketplace actions (bidding, listing creation). 
+
+We anticipate load testing the system (using tools like k6) and deploying multiple API replicas via Kubernetes to observe distributed scaling behavior. Utilizing a traditional stateful session architecture would require a PostgreSQL database lookup on every authenticated request. At high throughput (e.g., 10,000+ API requests per second), this couples API scalability directly to the database's read capacity, creating unnecessary lock contention and competing for resources with the primary auction workload.
+
+## 2. Decision
+We will implement a **Hybrid Token Architecture** using asymmetric cryptography and shared persistence.
+
+### 2.1 Access Tokens (Stateless)
+*   **Format:** JSON Web Token (JWT).
+*   **Cryptography:** Asymmetrically signed (RS256). The authentication service utilizes a private key to sign the token, while all Fastify API replicas utilize the corresponding public key for verification.
+*   **Validation:** Verified locally in Fastify memory. **Zero database lookups per standard request.**
+*   **Lifecycle:** Short-lived (e.g., 15 minutes).
+*   **Delivery:** Returned in the JSON response payload.
+
+### 2.2 Refresh Tokens (Stateful)
+*   **Format:** Opaque, cryptographically secure random string.
+*   **Storage:** Stored in PostgreSQL (via Prisma) as a salted hash alongside expiration and revocation metadata.
+*   **Validation:** Queried against the database *only* during the token refresh flow (when the short-lived access token expires).
+*   **Lifecycle:** Long-lived (e.g., 7 days). Revoked explicitly upon logout, password change, or security events.
+*   **Delivery:** Sent to the client exclusively via an `HttpOnly`, `Secure`, `SameSite=Strict` cookie to mitigate XSS exfiltration risks.
+
+## 3. Consequences
+
+### Positive
+*   **Horizontal Scalability:** API replicas can scale and authenticate incoming marketplace traffic entirely independently of the database.
+*   **Security:** If the database is compromised, refresh tokens remain secure due to cryptographic hashing. XSS attacks cannot easily exfiltrate the refresh token due to `HttpOnly` cookie constraints.
+*   **Separation of Concerns:** Authentication lifecycle management is cleanly separated from standard route authorization.
+
+### Negative / Trade-offs
+*   **Delayed Revocation:** Because access tokens are stateless, revoking a user's access (e.g., banning an account) is not instantaneous. The user maintains access until their current 15-minute token expires. We accept this staleness trade-off in favor of maximized system throughput.
+*   **Operational Complexity:** Requires secure management, rotation, and distribution of RSA keypairs within the Kubernetes environment, rather than managing a single symmetric secret.
+
+## 4. Implementation Phasing
+1.  **Persistence:** Create `RefreshToken` Prisma model and migration.
+2.  **Cryptography:** Implement RSA keypair generation and JWT signing/verification utilities.
+3.  **Core Services:** Update the Auth Service to coordinate credential verification, JWT generation, and Refresh Token hashing/storage.
+4.  **Transport:** Update Fastify `POST /auth/login` to return the JWT and set the `HttpOnly` refresh cookie.
+### 8. Pragmatic Indexing Driven by Access Patterns
 **Context:**  
 Adding indexes indiscriminately to foreign keys or individual columns increases write overhead, inflates index maintenance costs during updates, and wastes memory. A database index should never be created purely based on schema definition; it must serve a verified, high-frequency query access pattern.
 
