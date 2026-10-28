@@ -1,14 +1,35 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
-// Read keys from environment variables. 
-// In production, these should be securely injected (e.g., via Kubernetes secrets).
-// RS256 requires a PEM formatted private key for signing and a public key for verification.
-const PRIVATE_KEY = process.env.ACCESS_TOKEN_PRIVATE_KEY as string;
-const PUBLIC_KEY = process.env.ACCESS_TOKEN_PUBLIC_KEY as string;
+const PRIVATE_KEY_ENV = 'ACCESS_TOKEN_PRIVATE_KEY';
+const PUBLIC_KEY_ENV = 'ACCESS_TOKEN_PUBLIC_KEY';
 
-if (!PRIVATE_KEY || !PUBLIC_KEY) {
-  console.warn("WARNING: RSA keys for JWT are missing from environment variables.");
+class JwtConfigurationError extends Error {
+  constructor(variableName: string) {
+    super(`JWT configuration is invalid: ${variableName} must contain a PEM-formatted key`);
+    this.name = 'JwtConfigurationError';
+  }
 }
+
+/**
+ * Reads a key when it is needed rather than at module import time. This allows
+ * the application bootstrap to load dotenv before the first token operation.
+ */
+const getPemKey = (
+  variableName: string,
+  keyType: 'private' | 'public',
+): string => {
+  const value = process.env[variableName]?.replace(/\\n/g, '\n').trim();
+  const pemPattern =
+    keyType === 'private'
+      ? /-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]+-----END (?:RSA )?PRIVATE KEY-----/
+      : /-----BEGIN (?:RSA )?PUBLIC KEY-----[\s\S]+-----END (?:RSA )?PUBLIC KEY-----/;
+
+  if (!value || !pemPattern.test(value)) {
+    throw new JwtConfigurationError(variableName);
+  }
+
+  return value;
+};
 
 /**
  * Signs a payload to generate a short-lived access token using RS256.
@@ -16,10 +37,14 @@ if (!PRIVATE_KEY || !PUBLIC_KEY) {
 export const signAccessToken = (payload: object | Buffer): string => {
   const options: SignOptions = {
     algorithm: 'RS256',
-    expiresIn: '15m', // Short-lived as discussed
+    expiresIn: '15m',
   };
 
-  return jwt.sign(payload, PRIVATE_KEY, options);
+  return jwt.sign(
+    payload,
+    getPemKey(PRIVATE_KEY_ENV, 'private'),
+    options,
+  );
 };
 
 /**
@@ -27,16 +52,19 @@ export const signAccessToken = (payload: object | Buffer): string => {
  * Throws an error if the token is expired, tampered with, or invalid.
  */
 export const verifyAccessToken = <T>(token: string): T => {
+  const publicKey = getPemKey(PUBLIC_KEY_ENV, 'public');
+
   try {
-    const decoded = jwt.verify(token, PUBLIC_KEY, {
+    if (!token.trim()) {
+      throw new Error('Token is empty');
+    }
+
+    const decoded = jwt.verify(token, publicKey, {
       algorithms: ['RS256'],
     });
-    
+
     return decoded as T;
-  } catch (error) {
-    // We catch and re-throw a generic error to avoid leaking cryptographic details 
-    // to the upper layers, though you can inspect `error.name` (e.g., TokenExpiredError) 
-    // if you want to handle expiry specifically in your Fastify routes.
+  } catch {
     throw new Error('Invalid or expired access token');
   }
 };
