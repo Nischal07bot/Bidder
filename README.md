@@ -1,4 +1,6 @@
 <img width="1119" height="939" alt="Untitled-2026-09-03-1513" src="https://github.com/user-attachments/assets/f9f5be28-505a-4085-8f64-ccb52a122ba0" />
+<img width="1597" height="652" alt="Screenshot 2026-10-30 203508" src="https://github.com/user-attachments/assets/fda3f7fc-4d41-4224-a0b4-4cf8bdbe51ba" />
+
 Relationship for the first version:-
 
 ```text
