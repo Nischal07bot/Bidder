@@ -49,3 +49,8 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Local AI tool files
+apps/api/.agents/
+apps/api/.claude/
+apps/api/.windsurf/
