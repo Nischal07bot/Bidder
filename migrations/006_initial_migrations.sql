@@ -5,7 +5,7 @@ CREATE TABLE auth_sessions(
         ON DELETE CASCADE,
     refresh_token_hash TEXT NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
     absolute_expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ,
@@ -17,7 +17,7 @@ CREATE TABLE auth_sessions(
 
     CONSTRAINT auth_sessions_expiry_within_absolute
         CHECK (expires_at <= absolute_expires_at)
-)
+);
 CREATE INDEX auth_sessions_user_created_idx
     ON auth_sessions(user_id, created_at DESC);
 
